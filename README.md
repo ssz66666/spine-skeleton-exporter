@@ -28,7 +28,7 @@ The method
 ```java
 public static ViewportMethod computeViewport(Skeleton skeleton, float[] whxy)
 ```
-in `io.github.ssz66666.skeltonexporter.SkeletonOutputRenderer`
+in `io.github.ssz66666.skeletonexporter.SkeletonOutputRenderer`
 
 includes several methods for correctly zooming and positioning the camera for each skeleton:
 
