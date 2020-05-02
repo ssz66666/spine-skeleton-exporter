@@ -4,7 +4,7 @@ Export spine skeleton to PNG/MP4.
 
 ## Usage
 
-```
+```bash
 $ java -jar skeletonexporter.jar \
     -i /path/to/spine/skeleton.json \
         # input spin skeleton json file or directory
