@@ -612,6 +612,12 @@ public class SkeletonOutputRenderer extends ApplicationAdapter {
 				slot = skeleton.findSlot("images/bg02");
 				bone = slot.getBone();
 				att = slot.getAttachment();
+			}  else // templeOfTheSkyPriest_1
+				if (skeletonData.getName().equals("templeOfTheSkyPriest_1")) {
+					System.err.println("templeOfTheSkyPriest_1");
+					slot = skeleton.findSlot("BG5");
+					bone = slot.getBone();
+					att = slot.getAttachment();
 			} else if (null != skeleton.findSlot("BG")) {
 				System.err.println("BG");
 				slot = skeleton.findSlot("BG");
