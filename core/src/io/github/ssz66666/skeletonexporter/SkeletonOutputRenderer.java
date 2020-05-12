@@ -2,6 +2,7 @@ package io.github.ssz66666.skeletonexporter;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintStream;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
@@ -12,9 +13,12 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -31,9 +35,11 @@ import com.badlogic.gdx.graphics.Pixmap.Format;
 import com.badlogic.gdx.graphics.PixmapIO;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.Texture.TextureFilter;
+import com.badlogic.gdx.graphics.TextureData;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas.AtlasRegion;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas.TextureAtlasData;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.FrameBuffer;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
@@ -50,6 +56,7 @@ import com.esotericsoftware.spine.SkeletonJson;
 import com.esotericsoftware.spine.SkeletonRenderer;
 import com.esotericsoftware.spine.Slot;
 import com.esotericsoftware.spine.AnimationState.TrackEntry;
+import com.esotericsoftware.spine.attachments.AtlasAttachmentLoader;
 import com.esotericsoftware.spine.attachments.Attachment;
 import com.esotericsoftware.spine.attachments.MeshAttachment;
 import com.esotericsoftware.spine.attachments.RegionAttachment;
@@ -129,7 +136,8 @@ public class SkeletonOutputRenderer extends ApplicationAdapter {
 	private final List<String> ffmpegArgs;
 
 	private Skeleton skeleton;
-	private TextureAtlas loadedAtlas = null;
+	private final List<Object> loadedAtlas = new ArrayList<>();
+	private final Map<Texture, Pixmap> tmpTextures = new HashMap<>();
 	private AnimationState state;
 	private Array<Animation> animations;
 	private TwoColorPolygonBatch batch;
@@ -175,35 +183,20 @@ public class SkeletonOutputRenderer extends ApplicationAdapter {
 	public static Object[] getSkeleton(final FileHandle skeletonFile) {
 		// Setup a texture atlas that uses a white image for images not found in the
 		// atlas.
-		Pixmap pixmap = new Pixmap(32, 32, Format.RGBA8888);
-		pixmap.setColor(new Color(1, 1, 1, 0.33f));
-		pixmap.fill();
-		final AtlasRegion fake = new AtlasRegion(new Texture(pixmap), 0, 0, 32, 32);
-		pixmap.dispose();
+//		Pixmap pixmap = new Pixmap(32, 32, Format.RGBA8888);
+//		pixmap.setColor(new Color(1, 1, 1, 0.33f));
+//		pixmap.fill();
+//		final AtlasRegion fake = new AtlasRegion(new Texture(pixmap), 0, 0, 32, 32);
+//		pixmap.dispose();
 		
 		FileHandle atlasFile = skeletonFile.sibling(skeletonFile.nameWithoutExtension() + ".atlas");
 		TextureAtlasData data = !atlasFile.exists() ? null : new TextureAtlasData(atlasFile, atlasFile.parent(), false);
 
-		TextureAtlas atlas = new TextureAtlas(data) {
-			public AtlasRegion findRegion(String name) {
-				AtlasRegion region = super.findRegion(name);
-				if (region == null) {
-					// Look for separate image file.
-					FileHandle file = skeletonFile.sibling(name + ".png");
-					if (file.exists()) {
-						Texture texture = new Texture(file);
-						texture.setFilter(TextureFilter.Linear, TextureFilter.Linear);
-						region = new AtlasRegion(texture, 0, 0, texture.getWidth(), texture.getHeight());
-						region.name = name;
-					}
-				}
-				return region != null ? region : fake;
-			}
-		};
+		TextureAtlas atlas = new TextureAtlas(data);
 		for (Texture texture : atlas.getTextures())
 			texture.setFilter(TextureFilter.Linear, TextureFilter.Linear);
 
-		SkeletonJson json = new SkeletonJson(atlas);
+		SkeletonJsonOld json = new SkeletonJsonOld(atlas);
 		SkeletonData skeletonData = json.readSkeletonData(skeletonFile);
 		return new Object[] {new Skeleton(skeletonData), atlas};
 	}
@@ -221,6 +214,18 @@ public class SkeletonOutputRenderer extends ApplicationAdapter {
 		System.err.println(this.ffmpegBinary);
 		System.err.println(this.ffmpegArgs);
 	}
+	
+	public static <T> void prettyPrintArray(Array<T> arr, PrintStream p) {
+		int size = arr.size;
+		for (int i = 0; i < size; ++i) {
+			p.println(String.format("%d\t%s", i, arr.get(i).toString()));
+		}
+	}
+	
+	private static <T> void moveIndex(Array<T> arr, int a, int b) {
+		T v = arr.removeIndex(a);
+		arr.insert(b, v);
+	}
 
 	@Override
 	public void create() {
@@ -231,7 +236,7 @@ public class SkeletonOutputRenderer extends ApplicationAdapter {
 			}
 		});
 //		Gdx.graphics.setContinuousRendering(false);
-		batch = new TwoColorPolygonBatch(3100);
+		batch = new TwoColorPolygonBatch(32767);
 		renderer = new SkeletonRenderer();
 		camera = new OrthographicCamera();
 		screenCamera = new OrthographicCamera();
@@ -277,9 +282,20 @@ public class SkeletonOutputRenderer extends ApplicationAdapter {
 //		skeletonFiles.add(new FileHandle("/home/ssz/Downloads/other/otogi/still/daikokuten_2.json"));
 
 		loadSkeleton(skeletonFiles.get(currentSkeletonIndex));
+		
 
 		setAnimation(animations.get(currentAnimationIndex));
-
+		
+		Array<Slot> order = skeleton.getDrawOrder();
+		prettyPrintArray(order, System.out);
+//		moveIndex(order, 12, 48);
+//		moveIndex(order, 0, 47);
+//		Slot hip = skeleton.getSlots().get(12);
+//		MeshAttachment att = (MeshAttachment)hip.getAttachment();
+//		float[] worldVertices = new float[att.getWorldVerticesLength()];
+//		att.computeWorldVertices(hip, 0, att.getWorldVerticesLength(), worldVertices, 0, 2);
+//		System.out.println(Arrays.toString(worldVertices));
+		
 		Thread imgWriter = new Thread(new ImageWriter(imagesToWrite));
 //		Thread imgWriter = new Thread(new NoopFrameMuxer(imagesToWrite));
 		imgWriter.start();
@@ -756,10 +772,22 @@ public class SkeletonOutputRenderer extends ApplicationAdapter {
 		FileHandle atlasFile = skeletonFile.sibling(skeletonFile.nameWithoutExtension() + ".atlas");
 		TextureAtlasData data = !atlasFile.exists() ? null : new TextureAtlasData(atlasFile, atlasFile.parent(), false);
 		
-		if (loadedAtlas != null) {
-			loadedAtlas.dispose();
+		for (Object t : loadedAtlas) {
+			if (t instanceof TextureAtlas) {
+				((TextureAtlas) t).dispose();
+			} else
+			if (t instanceof Texture) {
+				((Texture) t).dispose();
+			}
 		}
-		TextureAtlas atlas = new TextureAtlas(data) {
+		loadedAtlas.clear();
+		for (Pixmap p : tmpTextures.values()) {
+			p.dispose();
+		}
+		tmpTextures.clear();
+
+		final TextureAtlas atlas = new TextureAtlas(data)
+		{
 			public AtlasRegion findRegion(String name) {
 				AtlasRegion region = super.findRegion(name);
 				if (region == null) {
@@ -777,9 +805,78 @@ public class SkeletonOutputRenderer extends ApplicationAdapter {
 		};
 		for (Texture texture : atlas.getTextures())
 			texture.setFilter(TextureFilter.Linear, TextureFilter.Linear);
-		loadedAtlas = atlas;
+		loadedAtlas.add(atlas);
 		
-		SkeletonJson json = new SkeletonJson(atlas);
+//		SkeletonJson json = new SkeletonJson(atlas);
+		SkeletonJson json = new SkeletonJson(new AtlasAttachmentLoader(atlas) {
+			
+			@Override
+			public MeshAttachment newMeshAttachment (com.esotericsoftware.spine.Skin skin, String name, String path) {
+				AtlasRegion region = atlas.findRegion(path);
+				if (region == null) throw new RuntimeException("Region not found in atlas: " + path + " (mesh attachment: " + name + ")");
+				// check if size matches
+				if (region.rotate) {
+					if (region.originalHeight != region.packedWidth || region.originalWidth != region.packedHeight) {
+						Pixmap p1 = new Pixmap(region.originalHeight, region.originalWidth, Format.RGBA8888);
+						p1.setColor(new Color(0, 0, 0, 0f));
+						p1.fill();
+						Pixmap p2;
+						if (tmpTextures.containsKey(region.getTexture())) {
+							p2 = tmpTextures.get(region.getTexture());
+						} else {
+							TextureData td = region.getTexture().getTextureData();
+							td.prepare();
+							p2 = td.consumePixmap();
+							tmpTextures.put(region.getTexture(), p2);
+						}
+						p1.drawPixmap(p2,
+								region.originalHeight - (int)region.offsetY - region.packedWidth,
+								region.originalWidth - (int)region.offsetX - region.packedHeight,
+								region.getRegionX(), region.getRegionY(), region.packedWidth, region.packedHeight);
+						Texture t = new Texture(p1);
+						t.setFilter(TextureFilter.Linear, TextureFilter.Linear);
+						String regName = region.name;
+						region = new AtlasRegion(t, 0, 0, t.getWidth(), t.getHeight());
+						region.name = regName;
+						region.rotate = true;
+						region.degrees = 90;
+						region.originalWidth = region.packedHeight;
+						region.originalHeight = region.packedWidth;
+						p1.dispose();
+						loadedAtlas.add(t);
+					}
+				} else {
+					if (region.originalWidth != region.packedWidth || region.originalHeight != region.packedHeight) {
+						Pixmap p1 = new Pixmap(region.originalWidth, region.originalHeight, Format.RGBA8888);
+						p1.setColor(new Color(0, 0, 0, 0f));
+						p1.fill();
+						Pixmap p2;
+						if (tmpTextures.containsKey(region.getTexture())) {
+							p2 = tmpTextures.get(region.getTexture());
+						} else {
+							TextureData td = region.getTexture().getTextureData();
+							td.prepare();
+							p2 = td.consumePixmap();
+							tmpTextures.put(region.getTexture(), p2);
+						}
+						p1.drawPixmap(p2,
+								(int)region.offsetX,
+								region.originalHeight - (int)region.offsetY - region.packedHeight,
+								region.getRegionX(), region.getRegionY(), region.packedWidth, region.packedHeight);
+						Texture t = new Texture(p1);
+						t.setFilter(TextureFilter.Linear, TextureFilter.Linear);
+						String regName = region.name;
+						region = new AtlasRegion(t, 0, 0, t.getWidth(), t.getHeight());
+						region.name = regName;
+						p1.dispose();
+						loadedAtlas.add(t);
+					}
+				}
+				MeshAttachment attachment = new MeshAttachment(name);
+				attachment.setRegion(region);
+				return attachment;
+			}
+		});
 		SkeletonData skeletonData = json.readSkeletonData(skeletonFile);
 		skeleton = new Skeleton(skeletonData);
 		skeleton.setToSetupPose();
@@ -824,7 +921,6 @@ public class SkeletonOutputRenderer extends ApplicationAdapter {
 		state.getData().setDefaultMix(0.0f);
 		renderer.setPremultipliedAlpha(true);
 		batch.setPremultipliedAlpha(true);
-		skeleton.setFlip(false, false);
 	}
 
 	private void setAnimation(Animation a) {
