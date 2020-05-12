@@ -783,6 +783,7 @@ public class SkeletonOutputRenderer extends ApplicationAdapter {
 		for (Texture texture : atlas.getTextures())
 			texture.setFilter(TextureFilter.Linear, TextureFilter.Linear);
 		loadedAtlas.add(atlas);
+		loadedAtlas.add(fake.getTexture());
 		
 //		SkeletonJson json = new SkeletonJson(atlas);
 		SkeletonJson json = new SkeletonJson(new AtlasAttachmentLoader(atlas) {
