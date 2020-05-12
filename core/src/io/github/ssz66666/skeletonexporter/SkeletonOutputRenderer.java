@@ -214,18 +214,6 @@ public class SkeletonOutputRenderer extends ApplicationAdapter {
 		System.err.println(this.ffmpegBinary);
 		System.err.println(this.ffmpegArgs);
 	}
-	
-	public static <T> void prettyPrintArray(Array<T> arr, PrintStream p) {
-		int size = arr.size;
-		for (int i = 0; i < size; ++i) {
-			p.println(String.format("%d\t%s", i, arr.get(i).toString()));
-		}
-	}
-	
-	private static <T> void moveIndex(Array<T> arr, int a, int b) {
-		T v = arr.removeIndex(a);
-		arr.insert(b, v);
-	}
 
 	@Override
 	public void create() {
@@ -285,17 +273,6 @@ public class SkeletonOutputRenderer extends ApplicationAdapter {
 		
 
 		setAnimation(animations.get(currentAnimationIndex));
-		
-		Array<Slot> order = skeleton.getDrawOrder();
-		prettyPrintArray(order, System.out);
-//		moveIndex(order, 12, 48);
-//		moveIndex(order, 0, 47);
-//		Slot hip = skeleton.getSlots().get(12);
-//		MeshAttachment att = (MeshAttachment)hip.getAttachment();
-//		float[] worldVertices = new float[att.getWorldVerticesLength()];
-//		att.computeWorldVertices(hip, 0, att.getWorldVerticesLength(), worldVertices, 0, 2);
-//		System.out.println(Arrays.toString(worldVertices));
-		
 		Thread imgWriter = new Thread(new ImageWriter(imagesToWrite));
 //		Thread imgWriter = new Thread(new NoopFrameMuxer(imagesToWrite));
 		imgWriter.start();
