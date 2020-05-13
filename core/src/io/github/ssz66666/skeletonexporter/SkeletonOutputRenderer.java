@@ -196,7 +196,7 @@ public class SkeletonOutputRenderer extends ApplicationAdapter {
 		for (Texture texture : atlas.getTextures())
 			texture.setFilter(TextureFilter.Linear, TextureFilter.Linear);
 
-		SkeletonJsonOld json = new SkeletonJsonOld(atlas);
+		SkeletonJson json = new SkeletonJson(atlas);
 		SkeletonData skeletonData = json.readSkeletonData(skeletonFile);
 		return new Object[] {new Skeleton(skeletonData), atlas};
 	}
@@ -621,6 +621,11 @@ public class SkeletonOutputRenderer extends ApplicationAdapter {
 				slot = skeleton.findSlot("bg");
 				bone = slot.getBone();
 				att = slot.getAttachment();
+			} else if (null != skeleton.findSlot("background")) {
+				System.err.println("background");
+				slot = skeleton.findSlot("background");
+				bone = slot.getBone();
+				att = slot.getAttachment();
 			}
 			if (bone != null && att instanceof RegionAttachment) {
 				RegionAttachment ratt = (RegionAttachment) att;
@@ -737,17 +742,6 @@ public class SkeletonOutputRenderer extends ApplicationAdapter {
 	private void loadSkeleton(final FileHandle skeletonFile) {
 
 		System.err.println(String.format("skeleton: %s", skeletonFile.toString()));
-
-		// Setup a texture atlas that uses a white image for images not found in the
-		// atlas.
-		Pixmap pixmap = new Pixmap(32, 32, Format.RGBA8888);
-		pixmap.setColor(new Color(1, 1, 1, 0.33f));
-		pixmap.fill();
-		final AtlasRegion fake = new AtlasRegion(new Texture(pixmap), 0, 0, 32, 32);
-		pixmap.dispose();
-
-		FileHandle atlasFile = skeletonFile.sibling(skeletonFile.nameWithoutExtension() + ".atlas");
-		TextureAtlasData data = !atlasFile.exists() ? null : new TextureAtlasData(atlasFile, atlasFile.parent(), false);
 		
 		for (Object t : loadedAtlas) {
 			if (t instanceof TextureAtlas) {
@@ -758,6 +752,20 @@ public class SkeletonOutputRenderer extends ApplicationAdapter {
 			}
 		}
 		loadedAtlas.clear();
+
+		// Setup a texture atlas that uses a white image for images not found in the
+		// atlas.
+		Pixmap pixmap = new Pixmap(32, 32, Format.RGBA8888);
+		pixmap.setColor(new Color(1, 1, 1, 0.33f));
+		pixmap.fill();
+		Texture fakeTexture = new Texture(pixmap);
+		loadedAtlas.add(fakeTexture);
+		final AtlasRegion fake = new AtlasRegion(fakeTexture, 0, 0, 32, 32);
+		pixmap.dispose();
+
+		FileHandle atlasFile = skeletonFile.sibling(skeletonFile.nameWithoutExtension() + ".atlas");
+		TextureAtlasData data = !atlasFile.exists() ? null : new TextureAtlasData(atlasFile, atlasFile.parent(), false);
+		
 		for (Pixmap p : tmpTextures.values()) {
 			p.dispose();
 		}
