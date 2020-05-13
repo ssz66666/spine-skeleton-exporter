@@ -562,7 +562,13 @@ public class SkeletonOutputRenderer extends ApplicationAdapter {
 			x = 0.18f;
 			y = 323.79f;
 			fw = 1402;
-			fh = 898;
+			fh = 898; 
+		} else if (skeletonData.getName().equals("scheherazade_1")) {
+			System.err.println("scheherazade_1");
+			x = 3.7f;
+			y = 317.9f;
+			fw = 1402;
+			fh = 898; 
 		} else {
 			Bone bone = null;
 			Attachment att = null;
@@ -611,10 +617,16 @@ public class SkeletonOutputRenderer extends ApplicationAdapter {
 				slot = skeleton.findSlot("images/bg02");
 				bone = slot.getBone();
 				att = slot.getAttachment();
-			}  else // templeOfTheSkyPriest_1
+			} else // templeOfTheSkyPriest_1
 				if (skeletonData.getName().equals("templeOfTheSkyPriest_1")) {
 					System.err.println("templeOfTheSkyPriest_1");
 					slot = skeleton.findSlot("BG5");
+					bone = slot.getBone();
+					att = slot.getAttachment();
+			} else // kame_2_180518
+				if (skeletonData.getName().equals("kame_2_180518")) {
+					System.err.println("kame_2_180518");
+					slot = skeleton.findSlot("BG_EF");
 					bone = slot.getBone();
 					att = slot.getAttachment();
 			} else if (null != skeleton.findSlot("BG")) {
