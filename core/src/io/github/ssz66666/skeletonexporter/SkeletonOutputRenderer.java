@@ -557,6 +557,12 @@ public class SkeletonOutputRenderer extends ApplicationAdapter {
 			y = 453f;
 			fw = 1120;
 			fh = 640;
+		} else if (skeletonData.getName().equals("cagliostro_1")) {
+			System.err.println("cagliostro_1");
+			x = 0.18f;
+			y = 323.79f;
+			fw = 1402;
+			fh = 898;
 		} else {
 			Bone bone = null;
 			Attachment att = null;
