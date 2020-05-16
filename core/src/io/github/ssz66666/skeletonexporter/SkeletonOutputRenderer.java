@@ -134,6 +134,7 @@ public class SkeletonOutputRenderer extends ApplicationAdapter {
 	private final String outputPattern;
 	private final String ffmpegBinary;
 	private final List<String> ffmpegArgs;
+	private final int startIndex;
 
 	private Skeleton skeleton;
 	private final List<Object> loadedAtlas = new ArrayList<>();
@@ -202,17 +203,19 @@ public class SkeletonOutputRenderer extends ApplicationAdapter {
 	}
 
 	public SkeletonOutputRenderer(Path inputPath, Path outputPath, String outputPattern, String ffmpegBinary,
-			List<String> ffmpegArgs) {
+			List<String> ffmpegArgs, int _startIndex) {
 		this.inputPath = inputPath;
 		String p = outputPath.resolve("a").toAbsolutePath().toString();
 		this.outputPattern = p.substring(0, p.length() - 1) + outputPattern;
 		this.ffmpegBinary = ffmpegBinary;
 		this.ffmpegArgs = ffmpegArgs;
+		this.startIndex = _startIndex;
 
 		System.err.println(inputPath);
 		System.err.println(this.outputPattern);
 		System.err.println(this.ffmpegBinary);
 		System.err.println(this.ffmpegArgs);
+		System.err.println(this.startIndex);
 	}
 
 	@Override
@@ -302,7 +305,7 @@ public class SkeletonOutputRenderer extends ApplicationAdapter {
 
 					String skeletonName = skeletonFiles.get(frm.skeletonIndex).nameWithoutExtension();
 					PixmapIO.writePNG(new FileHandle(
-							String.format(imgOutputPattern, skeletonName, frm.skeletonIndex, frm.animationIndex)),
+							String.format(imgOutputPattern, skeletonName, frm.skeletonIndex + startIndex, frm.animationIndex)),
 							frm.data,
 							Deflater.DEFAULT_COMPRESSION,
 							true);
@@ -390,7 +393,7 @@ public class SkeletonOutputRenderer extends ApplicationAdapter {
 						encodingAnimation = frm.animationIndex;
 
 						List<String> args = pb.command();
-						String outputPath = String.format(outputPattern, skeletonName, frm.skeletonIndex,
+						String outputPath = String.format(outputPattern, skeletonName, frm.skeletonIndex + startIndex,
 								frm.animationIndex + 1);
 						args.set(SIZE_INDEX, String.format("%dx%d", frm.data.getWidth(), frm.data.getHeight()));
 						args.set(args.size() - 1, outputPath);

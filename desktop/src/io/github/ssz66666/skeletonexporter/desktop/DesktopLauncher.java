@@ -66,6 +66,11 @@ public class DesktopLauncher {
 								.desc("path to the ffmpeg binary. If not specified, the bundled slow library will be used.")
 								.required()
 								.build();
+		Option sIndex = Option.builder()
+								.longOpt("sindex")
+								.hasArg()
+								.desc("starting index for naming output files, defaults to 0")
+								.build();
 		Option help = Option.builder("h")
 								.longOpt("help")
 								.hasArg(false)
@@ -74,6 +79,7 @@ public class DesktopLauncher {
 		options.addOption(input);
 		options.addOption(outdir);
 		options.addOption(output);
+		options.addOption(sIndex);
 		options.addOption(ffmpeg);
 		options.addOption(help);
 		
@@ -83,6 +89,7 @@ public class DesktopLauncher {
 		Path outputPath = null;
 		String outputPattern = null;
 		String ffmpegPath = null;
+		int startIndex = 0;
 		List<String> ffmpegArgs;
 		try {
 			CommandLine line = parser.parse(options, args, true);
@@ -95,6 +102,7 @@ public class DesktopLauncher {
 				System.err.println("The specified input does not exist or is not readable.");
 				System.exit(-1);
 			}
+			startIndex = Integer.parseInt(line.getOptionValue("sindex", "0"));
 			outputPath = FileSystems.getDefault().getPath(line.getOptionValue("dir", ""));
 			outputPattern = line.getOptionValue("output", "%2$04d_%3$02d_%1$s.mp4");
 			if (line.hasOption("ffmpeg")) {
@@ -120,7 +128,7 @@ public class DesktopLauncher {
 								"-crf", "22",
 								"-pix_fmt", "yuv420p"});
 			}
-			new LwjglApplication(new SkeletonOutputRenderer(inputPath, outputPath, outputPattern, ffmpegPath, ffmpegArgs), config);
+			new LwjglApplication(new SkeletonOutputRenderer(inputPath, outputPath, outputPattern, ffmpegPath, ffmpegArgs, startIndex), config);
 			
 		} catch (ParseException exp) {
 //			exp.printStackTrace();
